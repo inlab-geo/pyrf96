@@ -6,7 +6,7 @@ This repository contains ctypes based Python wrappers for the
 
 ## Installation
 ```
-pip install .
+pip install git+https://github.com/inlab-geo/pyrf96
 ```
 
 ## Licensing
