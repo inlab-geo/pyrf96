@@ -1,3 +1,14 @@
+#-----------------------------------------------------------------------
+# This script is a c-types interface between Receiver function routines and python
+# 
+# Most parameters relating to the Receiver Function are set within the Fortran routine.
+#
+# Fortran routines for Receiver function calculation by T. Shibutani
+#
+# M. Sambridge and Juerg Hauser, 
+# RSES, Dec., 2024.
+#
+#-----------------------------------------------------------------------
 from typing import Literal;
 
 import os
@@ -13,70 +24,76 @@ librf96=ctypes.cdll.LoadLibrary(glob.glob(os.path.dirname(__file__)+"/rf96*.so")
 
 def rfcalc(model,sn=0.0,mtype=0,fs=25.0,gauss_a=2.5,water_c=0.0001,angle=35.0,time_shift=5.0,ndatar=626,v60=8.043,seed=1): # Calculate Data covariance matrix for evaluation of waveform fit
     npt = np.shape(model)[0]
+    model_f = numpy.asfortranarray(model,dtype=numpy.float32)
+    model_c = model_f.ctypes.data_as(ctypes.POINTER(ctypes.c_float))
+    mtype_f = ctypes.c_int(mtype)
+    mtype_c = ctypes.byref(mtype_f) 
+    sn_f = ctypes.c_float(sn)
+    sn_c = ctypes.byref(sn_f) 
+    fs_f = ctypes.c_float(fs)
+    fs_c = ctypes.byref(fs_f) 
+    gauss_af = ctypes.c_float(gauss_a)
+    gauss_ac = ctypes.byref( gauss_af) 
+    water_cf = ctypes.c_float(water_c)
+    water_cc = ctypes.byref( water_cf) 
+    angle_f = ctypes.c_float(angle)
+    angle_c = ctypes.byref( angle_f) 
+    time_shift_f = ctypes.c_float(time_shift)
+    time_shift_c = ctypes.byref(time_shift_f) 
+    ndatar_f = ctypes.c_int(ndatar)
+    ndatar_c = ctypes.byref(ndatar_f) 
+    v60_f = ctypes.c_float(v60)
+    v60_c = ctypes.byref(v60_f) 
+    seed_f = ctypes.c_int(seed) 
+    seed_c = ctypes.byref(seed_f)
+    npt_f = ctypes.c_int(npt) 
+    npt_c = ctypes.byref(npt_f)
+    # returned variables
+    time_f = numpy.asfortranarray(numpy.zeros(ndatar),dtype=numpy.float32)
+    time_c = time_f.ctypes.data_as(ctypes.POINTER(ctypes.c_float))
+    wdata_f = numpy.asfortranarray(numpy.zeros(ndatar),dtype=numpy.float32)
+    wdata_c = wdata_f.ctypes.data_as(ctypes.POINTER(ctypes.c_float))
+
     if(sn==0.0):
         #a,b = rfm.rfcalc_nonoise(model,mtype,fs,gauss_a,water_c,angle,time_shift,ndatar,v60)
-        pass
+        librf96.rfcalc_nonoise(model_c,mtype_c,fs_c,gauss_ac,water_cc,angle_c,time_shift_c,ndatar_c,v60_c,npt_c,time_c,wdata_c)
     else:
-        pass
         #a,b = rfm.rfcalc_noise(model,mtype,sn,fs,gauss_a,water_c,angle,time_shift,ndatar,v60,seed)
-        print(' model ',model)
-        model_f = numpy.asfortranarray(model,dtype=numpy.float32)
-        model_c = model_f.ctypes.data_as(ctypes.POINTER(ctypes.c_float))
-        mtype_f = ctypes.c_int(mtype)
-        mtype_c = ctypes.byref(mtype_f) 
-        sn_f = ctypes.c_float(sn)
-        sn_c = ctypes.byref(sn_f) 
-        fs_f = ctypes.c_float(fs)
-        fs_c = ctypes.byref(fs_f) 
-        gauss_af = ctypes.c_float(gauss_a)
-        gauss_ac = ctypes.byref( gauss_af) 
-        water_cf = ctypes.c_float(water_c)
-        water_cc = ctypes.byref( water_cf) 
-        angle_f = ctypes.c_float(angle)
-        angle_c = ctypes.byref( angle_f) 
-        time_shift_f = ctypes.c_float(time_shift)
-        time_shift_c = ctypes.byref(time_shift_f) 
-        ndatar_f = ctypes.c_int(ndatar)
-        ndatar_c = ctypes.byref(ndatar_f) 
-        v60_f = ctypes.c_float(v60)
-        v60_c = ctypes.byref(v60_f) 
-        seed_f = ctypes.c_int(seed) 
-        seed_c = ctypes.byref(seed_f)
-        npt_f = ctypes.c_int(npt) 
-        npt_c = ctypes.byref(npt_f)
-        # returned variables
-        time_f = numpy.asfortranarray(numpy.zeros(ndatar),dtype=numpy.float32)
-        time_c = time_f.ctypes.data_as(ctypes.POINTER(ctypes.c_float))
-        wdata_f = numpy.asfortranarray(numpy.zeros(ndatar),dtype=numpy.float32)
-        wdata_c = wdata_f.ctypes.data_as(ctypes.POINTER(ctypes.c_float))
         librf96.rfcalc_noise(model_c,mtype_c,sn_c,fs_c,gauss_ac,water_cc,angle_c,time_shift_c,ndatar_c,v60_c,seed_c,npt_c,time_c,wdata_c)
-        print(time_f)
-        print(wdata_f)
+        #print(time_f)
+        #print(wdata_f)
     a = time_f
     b = wdata_f
     return a,b
 
 def v2mod(model,vmin=2.4,vmax=4.7,dmin=0.0,dmax=60.0): # Transform Voronoi nucleus representation to (depth vel) plot format
     #a,b,c,d,e = rfm.voro2mod(model)
-    px = np.zeros([2*len(d)])
-    py = np.zeros([2*len(d)])
+    # map variables for ctypes
+    model_f = numpy.asfortranarray(model,dtype=numpy.float32)
+    model_c = model_f.ctypes.data_as(ctypes.POINTER(ctypes.c_float))
+    npt = np.shape(model)[0]
+    npt_f = ctypes.c_int(npt)
+    npt_c = ctypes.byref(npt_f)
+    h_f = numpy.asfortranarray(numpy.zeros(npt),dtype=numpy.float32)
+    h_c = h_f.ctypes.data_as(ctypes.POINTER(ctypes.c_float))
+    beta_f = numpy.asfortranarray(numpy.zeros(npt),dtype=numpy.float32)
+    beta_c = beta_f.ctypes.data_as(ctypes.POINTER(ctypes.c_float))
+    vpvs_f = numpy.asfortranarray(numpy.zeros(npt),dtype=numpy.float32)
+    vpvs_c = vpvs_f.ctypes.data_as(ctypes.POINTER(ctypes.c_float))
+    qa_f = numpy.asfortranarray(numpy.zeros(npt),dtype=numpy.float32)
+    qa_c = qa_f.ctypes.data_as(ctypes.POINTER(ctypes.c_float))
+    qb_f = numpy.asfortranarray(numpy.zeros(npt),dtype=numpy.float32)
+    qb_c = qb_f.ctypes.data_as(ctypes.POINTER(ctypes.c_float))
+    librf96.voro2mod(model_c,npt_c,h_c,beta_c,vpvs_c,qa_c,qb_c)
+
+    px = np.zeros([2*len(qa_f)])
+    py = np.zeros([2*len(qa_f)])
     #a,b,c,d,e = rfm.voro2mod(model)
-    py[1::2],py[2::2],px[0::2],px[1::2] = list(np.cumsum(a)),list(np.cumsum(a))[:-1],b[:],b[:]
+    py[1::2],py[2::2],px[0::2],px[1::2] = list(np.cumsum(h_f)),list(np.cumsum(h_f))[:-1],beta_f[:],beta_f[:]
     py[-1] = dmax
     a,b,c,d,e = None,None,None,None,None
-    return np.cumsum(a),b,c,d,e,px,py
+    return np.cumsum(h_f),beta_f,vpvs_f,qa_f,qb_f,px,py
 
-#-----------------------------------------------------------------------
-# This script is an interface between Receiver function routines and python
-# 
-# Most parameters relating to the Receiver Function are set within the Fortran routine.
-#
-# Fortran routines for Receiver function calculation by T. Shibutani
-#
-# M. Sambridge, 
-# RSES, Oct., 2017.
-#
-#-----------------------------------------------------------------------
 ##################################################################################
 def InvDataCov(width,Ar,ndata): # Calculate Data covariance matrix for evaluation of waveform fit
     sigsq = width**2
@@ -148,7 +165,7 @@ def d2mod(model,vmin=2.4,vmax=4.7,dmin=0.0,dmax=60.0): # Transform depth represe
     py[-1] = dmax
     return px,py
 ##################################################################################
-def plot_RFs(time1,RFo,time2,RFp,string="Observed and predicted receiver functions"):
+def plot_RFs(time1,RFo,time2,RFp,string="Observed and predicted receiver functions",filename=None):
     fig, ax = plt.subplots()
     plt.title(string)
     plt.xlabel("Time (s)")
@@ -157,10 +174,11 @@ def plot_RFs(time1,RFo,time2,RFp,string="Observed and predicted receiver functio
     plt.plot(time1, RFo, 'k-', label='Observed')
     plt.plot(time2, RFp, 'r-', label='Predicted')
     plt.legend()
+    if(filename is not None): plt.savefig(filename)
     plt.show()
-    plt.savefig('RF_plot.pdf',format='PDF')
 ##################################################################################
-def plotRFm(velmod,time1,RFo,time2,RFp,mtype = 0,vmin=2.4,vmax=4.7,dmin=0.0,dmax=60.0,string="Observed and predicted receiver functions"): # plot velocity model and receiver function
+def plotRFm(velmod,time1,RFo,time2,RFp,mtype = 0,vmin=2.4,vmax=4.7,dmin=0.0,dmax=60.0,
+            filename=None,string="Observed and predicted receiver functions"): # plot velocity model and receiver function
     f, (a0, a1) = plt.subplots(1,2, figsize=(12,4), gridspec_kw = {'width_ratios':[1, 3]})
 
     a1.set_title(string)
@@ -188,10 +206,11 @@ def plotRFm(velmod,time1,RFo,time2,RFp,mtype = 0,vmin=2.4,vmax=4.7,dmin=0.0,dmax
     if(mtype==0): a0.plot(velmod[:,1],velmod[:,0],ls="",marker="o",markerfacecolor='none', markeredgecolor='k')
 
     #plt.tight_layout()
+    #plt.savefig('RF_mod_plot.pdf',format='PDF')
+    if(filename is not None): plt.savefig(filename)
     plt.show()
-    plt.savefig('RF_mod_plot.pdf',format='PDF')
     return pv,pd
 ##################################################################################
 
-__all__ = ["rfcalc"]
+__all__ = ["rfcalc","plotRFm","plot_RFs"]
 

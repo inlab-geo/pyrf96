@@ -48,55 +48,12 @@ elif(vtype==2):
 
 #time1, RFo = np.loadtxt("RF_obs.dat", unpack=True) # read in observed Receiver function
 time1, RFo = pyrf96.rfcalc(velmod,sn=0.25,mtype=vtype,seed=61254557)
-print('time1',time1)
-print(' RFo',RFo)
-exit()
+#print('time1',time1)
+#print(' RFo',RFo)
 time2, RFp = pyrf96.rfcalc(velmod,mtype=vtype)
 
+#print('time2',time2)
+#print(' RFp',RFp)
+
 pyrf96.plot_RFs(time1,RFo,time2,RFp) # plot a pair of RFs in a single frame
-
-pv,pd = pyrf96.plotRFm(velmod,time1,RFo,time2,RFp,mtype=vtype,dmax=60.0) # plot a pair of RFs with velocity model
-
-# Set up data Covariance matrix
-# 2.5, 0.01 = correlation half-width and amplitude of Gaussian noise
-ndata = len(RFp)
-Cdinv = pyrf96.InvDataCov(2.5,0.01,ndata) # Calculate Data covariance matrix
-
-# Calculate waveform misfit for reference model
-
-res = RFo-RFp
-mref = np.dot(res,np.transpose(np.dot(Cdinv, res)))/2.0
-print (' Waveform misfit of reference model',mref)
-
-# Calculate waveform misfit profile along chosen model parameter axis
-
-iparam = [1,0] # choose model parameter axis 
-               # 1,0 = depth layer 2
-               # 4,0 = depth layer 5
-               # 1,1 = velocity layer 2
-               # 3,1 = velocity layer 4
-
-# Set up axis limits
-limits0 = [[0.0, 2.0],[0.0, 2.0],[0.0, 2.0],[0.0, 3.0],[0.0, 3.0],[0.0, 2.0],[0.0, 2.0]]
-limits1 = [[60.0, 4.0],[60.0,4.0],[60.0,4.0],[60.0,5.0],[60.0,5.0],[60.0,4.0],[60.0,5.0]]
-x0 =limits0[iparam[0]][iparam[1]] # axis lower limit
-x1 =limits1[iparam[0]][iparam[1]] # axis upper limit
-nints = 512                       # Number of points along axis
-x = np.linspace(x0,x1,nints)      # set axis values
-xtrue = velmod[iparam[0],iparam[1]] # reference parameter value along axis
-
-profile = 0 # switch to calculate and plot misfit profile
-# Calculate profile
-if(profile):
-    misfit = np.zeros(nints)
-    for i in range(nints): 
-        velmod[iparam[0],iparam[1]] = x[i]
-        t, RF = pyrf96.rfcalc(velmod) # calculate receiver function for velocity model
-        res = RFo-RF
-        misfit[i] = np.dot(res,np.transpose(np.dot(Cdinv, res)))/2.0-mref
-
-    # Plot misfit profile
-    pyrf96.plot_misfit_profile(x[1:-2],misfit[1:-2],xtrue,iparam)
-
-
 
