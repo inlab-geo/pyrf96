@@ -23,6 +23,35 @@ from matplotlib import pyplot as plt
 librf96=ctypes.cdll.LoadLibrary(glob.glob(os.path.dirname(__file__)+"/rf96*.so")[0])
 
 def rfcalc(model,sn=0.0,mtype=0,fs=25.0,gauss_a=2.5,water_c=0.0001,angle=35.0,time_shift=5.0,ndatar=626,v60=8.043,seed=1): # Calculate Data covariance matrix for evaluation of waveform fit
+"""
+Calculate synthetic surface wave dispersion curves for a given earth model, with optional addition of noise added in frequency domain.
+
+This is a slim Fortran wrapper around RF.F90 from Shibutani et al. (1996), which uses the Thomson-Haskell matrix formulation. 
+Further details may be found.
+
+
+Args:
+    model (np.ndarray)               : Triplet defining layered model. meaning depends on mytpe, with shape (npts,3).
+    sn (float,optional)              : Signal to noise ratio used to add correlated Gaussian noise to output.
+    mtype (int, optional)            : Indicator for format of velocity model (default=0) 
+                                       model(1,i) is Vs velocity of layer i; 
+                                       model(2,i) is vpvs ratio of layer i;
+                                       mtype = 0 -> model(0,i) is the depth of Voronoi nuclei defining layer i;
+                                       mtype = 1 -> model(0,i) is the thickness of layer i;
+                                       mtype = 2 -> model(0,i) is depth of lower interface of layer i;
+    fs (float, optional)             : Sampling frequency (default=25 samples/s)
+    gauss_a (float, optional)        : Number 'a' defining the width of the gaussian filter in the deconvolution (default=2.5) 
+    water_c (float, optional)        : Water level used in deconvolution (default=0.0001) 
+    angle (float, optional)          : Angle in degrees of incoming teleseismic plane wave from vertical (default=35 degrees)
+    time_shift (float, optional)     : Time shift before the first p pusle (default=5s)   
+    ndatar (int,optional)            : Number of time time steps of output waveform
+    v60 (float,optional)             : P-wave velocity (km/s) needed to compute the ray parameter from angle (default=8.043 km/s)
+    seed (int,optional)              : Random set for noise gneration
+
+Returns:
+    time (np.array, size ndatar )  : Time series time in seconds.
+    wdata (np.array, size ndatar)  : The Receiver function amplitude.
+"""
     npt = np.shape(model)[0]
     model_f = numpy.asfortranarray(model,dtype=numpy.float32)
     model_c = model_f.ctypes.data_as(ctypes.POINTER(ctypes.c_float))
