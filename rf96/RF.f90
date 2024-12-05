@@ -1,5 +1,7 @@
 ! input observer RF, velocity model and return calculated RF
-Subroutine RFcalc_nonoise(voro,mtype,fs,gauss_a,water_c,angle,time_shift,ndatar,v60,npt,time,wdata) bind(c,name="rfcalc_nonoise")
+Subroutine RFcalc_nonoise(voro,mtype,fs,gauss_a,water_c,angle,&
+        time_shift,ndatar,v60,npt,time,wdata)&
+        bind(c,name="rfcalc_nonoise")
 !F2PY INTENT(OUT) :: wdata
 !F2PY INTENT(OUT) :: time
 !F2PY INTENT(IN) :: voro
@@ -124,7 +126,9 @@ enddo
 return
 end
 ! input observer RF, velocity model and return calculated RF
-Subroutine RFcalc_noise(voro,mtype,sn,fs,gauss_a,water_c,angle,time_shift,ndatar,v60,seed,npt,time,wdata) bind(c,name="rfcalc_noise")
+Subroutine RFcalc_noise(voro,mtype,sn,fs,gauss_a,water_c,angle,&
+        time_shift,ndatar,v60,seed,npt,time,wdata)&
+        bind(c,name="rfcalc_noise")
 !Subroutine RFcalc_noise(voro,npt,ndatar) bind(c,name="rfcalc_noise")
 !F2PY INTENT(OUT) :: wdata
 !F2PY INTENT(OUT) :: time
