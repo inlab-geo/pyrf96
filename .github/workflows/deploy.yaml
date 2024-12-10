@@ -31,7 +31,7 @@ jobs:
           CIBW_SKIP: pp* cp36* cp37* cp38* *-win32 *-manylinux_i686 *-musllinux_*
 
       - name: Upload wheels as artifact
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: wheelhouse
           path: wheelhouse
