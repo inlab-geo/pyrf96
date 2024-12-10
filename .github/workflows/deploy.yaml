@@ -9,7 +9,7 @@ on:
       - main
 
 jobs:
-  build:
+  build-wheel:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -39,3 +39,25 @@ jobs:
         with:
           name: ${{ matrix.os }}-wheelhouse
           path: wheelhouse
+
+  build-sdist:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: 3.10
+
+      - name: Set up environment
+        run: |
+          python -m pip install scikit-build-core build
+
+      - name: Build and check sdist
+        run: |
+          python -m build --sdist
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          path: dist/*.tar.gz
+          name: sourcedist
