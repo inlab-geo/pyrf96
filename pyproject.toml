@@ -10,3 +10,6 @@ dependencies = [
     "numpy",
     "matplotlib"
 ]
+
+[tool.scikit-build]
+sdist.exclude = [".github", ".gitignore", "examples", "test"]
