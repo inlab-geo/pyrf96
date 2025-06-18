@@ -7,7 +7,6 @@
 # Most parameters relating to the Receiver Function are set within the Fortran routine.
 #
 # The fortran source was interfaced with ctypes
-# > f2py -m RF -c RF.F90 RFsubs/*.f*
 #
 # Fortran routines for Receiver function calculation by T. Shibutani
 #
