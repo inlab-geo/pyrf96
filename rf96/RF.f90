@@ -193,6 +193,7 @@ real, parameter ::    rad = 0.017453292    !don't touch
 real wdata(ndatar),time(ndatar)
 real voro(npt,3)
 real sn
+real depth
 real din,ppara
 integer i,npt,seed
 real beta(npt),h(npt),vpvs(npt),qa(npt),qb(npt)
@@ -218,7 +219,7 @@ real beta(npt),h(npt),vpvs(npt),qa(npt),qb(npt)
 
 if(mtype.eq.0)then
      call voro2qmodel(voro,npt,npt,d_min,d_max,beta,h,vpvs,qa,qb)
-else
+else if(mtype.eq.1)then
      do i=1,npt
         h(i)= voro(i,1) 
         beta(i) = voro(i,2)
@@ -227,6 +228,20 @@ else
         qb(i)= 600
      enddo
      h(npt)=0
+else if(mtype.eq.2)then
+     depth = 0.0
+     do i=1,npt
+        h(i)= voro(i,1) - depth 
+        beta(i) = voro(i,2)
+        vpvs(i) = voro(i,3)
+        qa(i)= 1450
+        qb(i)= 600
+        depth = voro(i,1)
+     enddo
+     h(npt)=0
+else 
+     write(*,*)' Fortran routine RF: Input model type unknown'
+     stop
 end if
 
 !do i=1,npt
