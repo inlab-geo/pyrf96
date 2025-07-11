@@ -306,13 +306,43 @@ def plotRFm(
     dmin=0.0,
     dmax=60.0,
     filename=None,
-    string="Observed and predicted receiver functions",
-):  # plot velocity model and receiver function
+    title="Observed and predicted receiver functions",
+    velmod2=None,
+    plotnuclei = False,
+    modlabels=None):  
+        
+    '''
+    plotRFm
+    
+    Inputs:
+        velmod, numpy.ndarray(:,3)       : Triplet defining layered model. Format depends on mytpe.
+        time1, numpy.ndarray(n,)         : Time points of receiver function (shape(n)).
+        RFo, numpy.ndarray(n,)           : Amplitude of receiver function.
+        time2, numpy.ndarray(n,)         : Time points of 2nd receiver function (shape(n)).
+        RFp, numpy.ndarray(n,)           : Amplitude of 2nd receiver function.
+        mtype (int, optional)            : Indicator for format of velocity model (default=0)
+                                           mtype = 0 -> model(:,0) is the depth of Voronoi nuclei defining layer interfaces;
+                                           mtype = 1 -> model(:,0) is the thickness of layers;
+                                           mtype = 2 -> model(:,0) is depth of lower interface of layers;
+                                           model(:,1) contains Vs velocity of each layer;
+                                           model(:,2) contains vpvs ratio of each layer;
+        vmin, float                      : Lower limit of velocity axis        
+        vmax, float                      : Upper limit of velocity axis        
+        dmin, float                      : Lower limit of depth axis        
+        dmax, float                      : Upper limit of depth axis        
+        filename, string                 : Name of file for saving figure (optional)
+        title, string                    : plot title 
+        modlabels, list of two strings   : Labels for model plot
+        velmod2, numpy.ndarray(:,3)      : Triplet defining 2nd layered model (optional). Format depends on mytpe.
+        plotnuclei, bool                 : Bool to plot Voronoi nuclei of model if mtype=0. (default=False).
+    '''    
+
+# plot velocity model and receiver function
     f, (a0, a1) = plt.subplots(
         1, 2, figsize=(12, 4), gridspec_kw={"width_ratios": [1, 3]}
     )
 
-    a1.set_title(string)
+    a1.set_title(title)
     a1.set_xlabel("Time (s)")
     a1.set_ylabel("Amplitude")
     # if((k==3) & (j==0)):a1.set_ylim(-0.2,0.6)
@@ -322,6 +352,11 @@ def plotRFm(
     # a1.plot(time2[:626], RFp[:626], 'b-', label='Predicted')
     a1.plot(time2, RFp, "b-", label="Predicted")
     a1.legend()
+
+    if(modlabels is not None):
+        lab1,lab2 = modlabels
+    else:
+        lab1,lab2 = "",""
 
     if mtype == 0:
         d, beta, vpvs, qa, qb, pv, pd = v2mod(
@@ -336,14 +371,30 @@ def plotRFm(
             velmod
         )  # Convert velocity model from Layer format to plot format
 
+    if(velmod2 is not None): 
+        if mtype == 0:
+            d, beta, vpvs, qa, qb, pv2, pd2 = v2mod(
+                velmod2
+            )  # Convert velocity model from Voronoi format to plot format
+        if mtype == 1:
+            pv2, pd2 = l2mod(
+                velmod2
+            )  # Convert velocity model from Layer format to plot format
+        if mtype == 2:
+            pv2, pd2 = d2mod(
+                velmod2
+            )  # Convert velocity model from Layer format to plot format
+        
+    
     a0.set_title(" Velocity model")  # Plot velocity model with Receiver function
     a0.set_xlabel("Vs (km/s)")
     a0.set_ylabel("Depth (km)")
-    a0.plot(pv, pd, "g-")
+    a0.plot(pv, pd, "g-",label=lab1)
+    if(velmod2 is not None): a0.plot(pv2, pd2, "k-",label=lab2)
     a0.set_xlim(vmin, vmax)
     a0.set_ylim(dmin, dmax)
     a0.invert_yaxis()
-    if mtype == 0:
+    if (mtype == 0 and plotnuclei):
         a0.plot(
             velmod[:, 1],
             velmod[:, 0],
@@ -352,7 +403,18 @@ def plotRFm(
             markerfacecolor="none",
             markeredgecolor="k",
         )
-
+        if(velmod2 is not None):
+            a0.plot(
+            velmod2[:, 1],
+            velmod2[:, 0],
+            ls="",
+            marker="o",
+            markerfacecolor="none",
+            markeredgecolor="k",
+            lineweight = 0.2,
+        )
+    if(modlabels is not None):
+        a0.legend()
     # plt.tight_layout()
     # plt.savefig('RF_mod_plot.pdf',format='PDF')
     if filename is not None:
