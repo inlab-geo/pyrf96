@@ -1,6 +1,6 @@
 ! input observer RF, velocity model and return calculated RF
 Subroutine RFcalc_nonoise(voro,mtype,fs,gauss_a,water_c,angle,&
-        time_shift,ndatar,v60,npt,time,wdata)&
+        time_shift,ndatar,v60,npt,qa,qb,time,wdata)&
         bind(c,name="rfcalc_nonoise")
 !F2PY INTENT(OUT) :: wdata
 !F2PY INTENT(OUT) :: time
@@ -75,14 +75,12 @@ real beta(npt),h(npt),vpvs(npt),qa(npt),qb(npt)
 !**************************************************************
 
 if(mtype.eq.0)then
-     call voro2qmodel(voro,npt,npt,d_min,d_max,beta,h,vpvs,qa,qb)
+     call voro2qmodel(voro,npt,npt,d_min,d_max,beta,h,vpvs)
 else if(mtype.eq.1)then
      do i=1,npt
         h(i)= voro(i,1) 
         beta(i) = voro(i,2)
         vpvs(i) = voro(i,3)
-        qa(i)= 1450
-        qb(i)= 600
      enddo
      h(npt)=0
 else if(mtype.eq.2)then
@@ -91,8 +89,6 @@ else if(mtype.eq.2)then
         h(i)= voro(i,1) - depth 
         beta(i) = voro(i,2)
         vpvs(i) = voro(i,3)
-        qa(i)= 1450
-        qb(i)= 600
         depth = voro(i,1)
      enddo
      h(npt)=0
@@ -127,7 +123,7 @@ return
 end
 ! input observer RF, velocity model and return calculated RF
 Subroutine RFcalc_noise(voro,mtype,sn,fs,gauss_a,water_c,angle,&
-        time_shift,ndatar,v60,seed,npt,time,wdata)&
+        time_shift,ndatar,v60,seed,npt,qa,qb,time,wdata)&
         bind(c,name="rfcalc_noise")
 !Subroutine RFcalc_noise(voro,npt,ndatar) bind(c,name="rfcalc_noise")
 !F2PY INTENT(OUT) :: wdata
@@ -218,14 +214,12 @@ real beta(npt),h(npt),vpvs(npt),qa(npt),qb(npt)
 !write(*,*)wdata
 
 if(mtype.eq.0)then
-     call voro2qmodel(voro,npt,npt,d_min,d_max,beta,h,vpvs,qa,qb)
+     call voro2qmodel(voro,npt,npt,d_min,d_max,beta,h,vpvs)
 else if(mtype.eq.1)then
      do i=1,npt
         h(i)= voro(i,1) 
         beta(i) = voro(i,2)
         vpvs(i) = voro(i,3)
-        qa(i)= 1450
-        qb(i)= 600
      enddo
      h(npt)=0
 else if(mtype.eq.2)then
@@ -234,8 +228,6 @@ else if(mtype.eq.2)then
         h(i)= voro(i,1) - depth 
         beta(i) = voro(i,2)
         vpvs(i) = voro(i,3)
-        qa(i)= 1450
-        qb(i)= 600
         depth = voro(i,1)
      enddo
      h(npt)=0
@@ -273,7 +265,7 @@ enddo
 return
 end
 ! input observer RF, velocity model and return calculated RF
-Subroutine voro2mod(voro,npt,h,beta,vpvs,qa,qb) bind(c,name="voro2mod")
+Subroutine voro2mod(voro,npt,h,beta,vpvs) bind(c,name="voro2mod")
 !F2PY INTENT(OUT) :: h
 !F2PY INTENT(OUT) :: beta
 !F2PY INTENT(OUT) :: vpvs
@@ -299,7 +291,7 @@ real, parameter :: d_max = 60
 
 real voro(npt,3)
 integer npt
-real beta(npt),h(npt),vpvs(npt),qa(npt),qb(npt)
+real beta(npt),h(npt),vpvs(npt)
 
 !**************************************************************
 
@@ -307,7 +299,7 @@ real beta(npt),h(npt),vpvs(npt),qa(npt),qb(npt)
 
 !**************************************************************
 
-call voro2qmodel(voro,npt,npt,d_min,d_max,beta,h,vpvs,qa,qb)
+call voro2qmodel(voro,npt,npt,d_min,d_max,beta,h,vpvs)
 
 !do i=1,npt
 !write(*,*)i,h(i),beta(i),vpvs(i),qa(i),qb(i)

@@ -31,6 +31,8 @@ def rfcalc(
     ndatar=626,
     v60=8.043,
     seed=1,
+    noise = None,
+    qmodels=[1450.,600.]
 ):  # Calculate Data covariance matrix for evaluation of waveform fit
     """
         Calculate synthetic surface wave dispersion curves for a given earth model, with optional addition of noise added in frequency domain.
@@ -41,7 +43,6 @@ def rfcalc(
 
         Args:
         model (np.ndarray)               : Triplet defining layered model. meaning depends on mytpe, with shape (npts,3).
-        sn (float,optional)              : Signal to noise ratio used to add correlated Gaussian noise to output.
         mtype (int, optional)            : Indicator for format of velocity model (default=0)
                                            model(1,i) is Vs velocity of layer i;
                                            model(2,i) is vpvs ratio of layer i;
@@ -55,8 +56,17 @@ def rfcalc(
         time_shift (float, optional)     : Time shift before the first p pusle (default=5s)
         ndatar (int,optional)            : Number of time time steps of output waveform
         v60 (float,optional)             : P-wave velocity (km/s) needed to compute the ray parameter from angle (default=8.043 km/s)
-        seed (int,optional)              : Random set for noise gneration
-
+        qmodels, list[np.array,np.array)]: Attenuation factor/quality values P and S waves for each layer (qa,qb). 
+                                           If scalars then P-wave attenuation for each layer is qa*np.ones(L]; S-wave attenuation is qb*np.ones(L) for L layers.
+                                           Otherwise they should be numpy arrays of user specified qa and qb values for each layer.
+        seed (int,optional)              : Random seed for noise generation
+        sn (float,optional)              : Noise to signal ratio used to add correlated Gaussian noise to output in frequency domain using Shibutani method.
+        noise (dict,optional)            : Dictionary defining noise kernel to be added in the time domain (default=None).
+                                           Dictionary must specify:
+                                                 noise['kernel']    : type of kernel function. One of ['sqExp','matern0',matern1','matern2','periodic'] 
+                                                 noise['amp_sigma'] : standard deviation of noise amplitude (float)
+                                                 noise['corr_time'] : correlation time of noise in unit of time discretization (float)
+    
     Returns:
         time (np.array, size ndatar )  : Time series time in seconds.
         wdata (np.array, size ndatar)  : The Receiver function amplitude.
@@ -92,6 +102,19 @@ def rfcalc(
     time_c = time_f.ctypes.data_as(ctypes.POINTER(ctypes.c_float))
     wdata_f = np.asfortranarray(np.zeros(ndatar), dtype=np.float32)
     wdata_c = wdata_f.ctypes.data_as(ctypes.POINTER(ctypes.c_float))
+    if(np.isscalar(qmodels[0])):
+        qa = qmodels[0]*np.ones(npt)
+    else:
+        qa = qmodels[0]
+    qa_f = np.asfortranarray(qa, dtype=np.float32)
+    qa_c = qa_f.ctypes.data_as(ctypes.POINTER(ctypes.c_float))
+    if(np.isscalar(qmodels[1])):
+        qb = qmodels[1]*np.ones(npt)
+    else:
+        qb = qmodels[1]
+    qb_f = np.asfortranarray(qb, dtype=np.float32)
+    qb_c = qb_f.ctypes.data_as(ctypes.POINTER(ctypes.c_float))
+        
 
     if sn == 0.0:
         # a,b = rfm.rfcalc_nonoise(model,mtype,fs,gauss_a,water_c,angle,time_shift,ndatar,v60)
@@ -106,6 +129,8 @@ def rfcalc(
             ndatar_c,
             v60_c,
             npt_c,
+            qa_c,
+            qb_c,
             time_c,
             wdata_c,
         )
@@ -124,16 +149,57 @@ def rfcalc(
             v60_c,
             seed_c,
             npt_c,
+            qa_c,
+            qb_c,
             time_c,
             wdata_c,
         )
         # print(time_f)
         # print(wdata_f)
+    if(noise is not None): # Add specified class of noise in the time domain and return covariance of noise
+        wdata_f, Cd = add_time_domain_noise(wdata_f,time_f,noise)
+        return time_f,wdata_f, Cd
     a = time_f
     b = wdata_f
     return a, b
 
+def add_time_domain_noise(w,t,noise):
+    amp_sigma = noise['amp_sigma']
+    corr_time = noise['corr_time']
+    # define kernel function
+    if(noise['kernel'] == 'sqExp'):
+        k = lambda x,xp:sqExp(x,xp,amp_sigma,corr_time) # choose a Gaussian kernel with amplitude standard deviation and correlation length 
+    elif(noise['kernel'] == 'matern0'):
+        k = lambda x,xp:matern0(x,xp,amp_sigma,corr_time) # choose a Gaussian kernel with amplitude standard deviation and correlation length 
+    elif(noise['kernel'] == 'matern1'):
+        k = lambda x,xp:matern1(x,xp,amp_sigma,corr_time) # choose a Gaussian kernel with amplitude standard deviation and correlation length 
+    elif(noise['kernel'] == 'matern2'):
+        k = lambda x,xp:matern2(x,xp,amp_sigma,corr_time) # choose a Gaussian kernel with amplitude standard deviation and correlation length 
+    elif(noise['kernel'] == 'periodic'):
+        k = lambda x,xp:periodic(x,xp,amp_sigma,corr_time) # choose a Gaussian kernel with amplitude standard deviation and correlation length 
+    # calculate covariance matrix
+    nt = len(w)
+    xx = np.linspace(t[0],t[-1],nt)
+    K = np.zeros([nt,nt])
+    for i in range(nt):
+        for j in range(nt):
+            K[i,j] = k(xx[i],xx[j])
+    # add noise realization to signal
+    w+= np.random.multivariate_normal(np.zeros(nt),K)
+    return w,K
 
+# define some standard noise kernels
+def sqExp(x,xp,s1,rho):
+    return (s1**2) * np.exp(-(x-xp)**2/(2.*rho**2))
+def matern0(x,xp,s1,rho):
+    return (s1**2)*np.exp(-np.abs(x-xp)/rho)
+def matern1(x,xp,s1,rho):
+    return (s1**2)*(1.+np.sqrt(3)*abs(x-xp)/rho)*np.exp(-np.sqrt(3)*abs(x-xp)/rho)
+def matern2(x,xp,s1,rho):
+    return (s1**2)*(1.+np.sqrt(5)*abs(x-xp)/rho+5.*(x-xp)**2/(3.*rho**2))*np.exp(-np.sqrt(5)*abs(x-xp)/rho)
+def periodic(x,xp,s1,rho,period):
+    return (s1**2) *np.exp(-(2*np.sin(abs(x-xp)*np.pi/period)**2)/rho**2)
+    
 def v2mod(
     model, vmin=2.4, vmax=4.7, dmin=0.0, dmax=60.0
 ):  # Transform Voronoi nucleus representation to (depth vel) plot format
@@ -150,14 +216,10 @@ def v2mod(
     beta_c = beta_f.ctypes.data_as(ctypes.POINTER(ctypes.c_float))
     vpvs_f = np.asfortranarray(np.zeros(npt), dtype=np.float32)
     vpvs_c = vpvs_f.ctypes.data_as(ctypes.POINTER(ctypes.c_float))
-    qa_f = np.asfortranarray(np.zeros(npt), dtype=np.float32)
-    qa_c = qa_f.ctypes.data_as(ctypes.POINTER(ctypes.c_float))
-    qb_f = np.asfortranarray(np.zeros(npt), dtype=np.float32)
-    qb_c = qb_f.ctypes.data_as(ctypes.POINTER(ctypes.c_float))
-    librf96.voro2mod(model_c, npt_c, h_c, beta_c, vpvs_c, qa_c, qb_c)
+    librf96.voro2mod(model_c, npt_c, h_c, beta_c, vpvs_c)
 
-    px = np.zeros([2 * len(qa_f)])
-    py = np.zeros([2 * len(qa_f)])
+    px = np.zeros([2 * len(model)])
+    py = np.zeros([2 * len(model)])
     # a,b,c,d,e = rfm.voro2mod(model)
     py[1::2], py[2::2], px[0::2], px[1::2] = (
         list(np.cumsum(h_f)),
@@ -167,7 +229,7 @@ def v2mod(
     )
     py[-1] = dmax
     a, b, c, d, e = None, None, None, None, None
-    return np.cumsum(h_f), beta_f, vpvs_f, qa_f, qb_f, px, py
+    return np.cumsum(h_f), beta_f, vpvs_f, px, py
 
 
 ##################################################################################
@@ -359,7 +421,7 @@ def plotRFm(
         lab1,lab2 = "",""
 
     if mtype == 0:
-        d, beta, vpvs, qa, qb, pv, pd = v2mod(
+        d, beta, vpvs, pv, pd = v2mod(
             velmod
         )  # Convert velocity model from Voronoi format to plot format
     if mtype == 1:
@@ -373,7 +435,7 @@ def plotRFm(
 
     if(velmod2 is not None): 
         if mtype == 0:
-            d, beta, vpvs, qa, qb, pv2, pd2 = v2mod(
+            d, beta, vpvs, pv2, pd2 = v2mod(
                 velmod2
             )  # Convert velocity model from Voronoi format to plot format
         if mtype == 1:
